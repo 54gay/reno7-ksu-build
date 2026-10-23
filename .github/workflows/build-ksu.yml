@@ -14,11 +14,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flex bison bc libssl-dev libelf-dev
 
-      - name: Download clang-r383902b1
+      - name: Download clang-r383902b1 from TUNA
         run: |
-          wget -q https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r383902b1/archive/refs/heads/master.tar.gz
-          tar -xzf master.tar.gz
-          echo "$PWD/android_prebuilts_clang_kernel_linux-x86_clang-r383902b1-master/bin" >> "$GITHUB_PATH"
+          # 从清华源 android-11 分支拉取，保留老版本 clang
+          git clone --depth 1 -b android-11.0.0_r48 https://mirrors.tuna.tsinghua.edu.cn/git/AOSP/platform/prebuilts/clang/host/linux-x86.git clang-repo
+          mv clang-repo/clang-r383902b1 clang
+          rm -rf clang-repo
+          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
 
       - name: Prepare config
         run: |
