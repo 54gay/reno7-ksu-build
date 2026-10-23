@@ -1,0 +1,28 @@
+name: Build kernelsu.ko
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y flex bison bc libssl-dev libelf-dev
+      - name: Download clang
+        run: |
+          wget -q "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android-11.0.0_r48/clang-r383902b1.tar.gz" -O clang.tar.gz
+          mkdir -p clang && tar -xzf clang.tar.gz -C clang
+          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
+      - name: Prepare config
+        run: |
+          mkdir -p out && cp config.txt out/.config && echo 'CONFIG_KSU=y' >> out/.config
+          make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
+          make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
+      - name: Copy symvers
+        run: cp Module.symvers out/Module.symvers
+      - name: Build ko
+        run: make -j"$(nproc)" ARCH=arm64 LLVM=1 O=out drivers/kernelsu/ </dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kernelsu-ko
+          path: out/drivers/kernelsu/kernelsu.ko
