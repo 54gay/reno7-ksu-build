@@ -14,15 +14,49 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flex bison bc libssl-dev libelf-dev
 
+      - name: Cache Clang Toolchain
+        id: cache-clang
+        uses: actions/cache@v4
+        with:
+          path: clang
+          key: clang-r383902b1-v2
 
       - name: Download clang-r383902b1
+        if: steps.cache-clang.outputs.cache-hit != 'true'
         run: |
           curl -L -o clang-repo.tar.gz "https://github.com/TrellixVulnTeam/platform_prebuilts_clang_host_linux-x86_5FOJ/archive/refs/heads/eleven.tar.gz"
           mkdir -p clang-repo
           tar -xzf clang-repo.tar.gz -C clang-repo --strip-components=1
           mv clang-repo/clang-r383902b1 ./clang
           rm -rf clang-repo clang-repo.tar.gz
-          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
+
+      - name: Add Clang to PATH
+        run: echo "$PWD/clang/bin" >> "$GITHUB_PATH"
+
+      - name: Auto-fix missing Kconfigs
+        run: |
+          # 用 Python 一键扫描并注释掉所有缺失的 source，彻底解决 OPPO 阉割问题
+          python3 -c '
+          import os, re
+          for root, dirs, files in os.walk("."):
+              if "Kconfig" in files:
+                  fpath = os.path.join(root, "Kconfig")
+                  with open(fpath, "r") as f:
+                      lines = f.readlines()
+                  changed = False
+                  for i, line in enumerate(lines):
+                      m = re.match(r"^\s*source\s+\"([^\"]+)\"", line)
+                      if m:
+                          target = m.group(1)
+                          if not os.path.exists(target):
+                              lines[i] = "# " + line
+                              changed = True
+                  if changed:
+                      with open(fpath, "w") as f:
+                          f.writelines(lines)
+          print("Kconfig auto-fix completed.")
+          '
+
       - name: Prepare config
         run: |
           mkdir -p out
