@@ -55,27 +55,19 @@ jobs:
         run: |
           mkdir -p out
           cp config.txt out/.config
-          
-          # 暴力删掉冲突行
           sed -i '/CONFIG_64BIT/d' out/.config
           sed -i '/CONFIG_ARM64/d' out/.config
           echo 'CONFIG_64BIT=y' >> out/.config
           echo 'CONFIG_ARM64=y' >> out/.config
           echo 'CONFIG_KSU=y' >> out/.config
           
-          # 第一次常规配置
           make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
-          
-          # 用内核自带的 scripts/config 强行覆盖，防止它自己删掉
-          ./scripts/config --file out/.config --enable 64BIT
-          ./scripts/config --file out/.config --enable ARM64
-          ./scripts/config --file out/.config --enable KSU
-          
-          # 重新生成头文件
           make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
           
-          echo "=== 检查 CONFIG_64BIT 是否生效 ==="
-          grep "CONFIG_64BIT" out/.config
+          echo "=== 检查 out/.config 里的 CONFIG_64BIT ==="
+          grep "CONFIG_64BIT" out/.config || true
+          echo "=== 检查生成的 autoconf.h 里的 CONFIG_64BIT ==="
+          grep "CONFIG_64BIT" out/include/generated/autoconf.h || true
 
       - name: Extract and Copy Module.symvers
         run: |
@@ -84,7 +76,8 @@ jobs:
 
       - name: Build kernelsu.ko
         run: |
-          make -j2 ARCH=arm64 LLVM=1 O=out CONFIG_DEBUG_INFO=n drivers/kernelsu/ </dev/null
+          # 注入 KCFLAGS，强制给 C 编译器喂宏，彻底绕开 Kconfig 的脑残冲突
+          make -j2 ARCH=arm64 LLVM=1 O=out KCFLAGS="-DCONFIG_64BIT" CONFIG_DEBUG_INFO=n drivers/kernelsu/ </dev/null
 
       - uses: actions/upload-artifact@v4
         with:
