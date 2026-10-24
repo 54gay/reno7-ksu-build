@@ -10,7 +10,7 @@ jobs:
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
 
-      - name: Checkout Clang (Trellix Mirror)
+      - name: Checkout Clang
         uses: actions/checkout@v4
         with:
           repository: TrellixVulnTeam/platform_prebuilts_clang_host_linux-x86_5FOJ
@@ -55,13 +55,25 @@ jobs:
         run: |
           mkdir -p out
           cp config.txt out/.config
+          
+          # 暴力删掉冲突行
           sed -i '/CONFIG_64BIT/d' out/.config
           sed -i '/CONFIG_ARM64/d' out/.config
           echo 'CONFIG_64BIT=y' >> out/.config
           echo 'CONFIG_ARM64=y' >> out/.config
           echo 'CONFIG_KSU=y' >> out/.config
+          
+          # 第一次常规配置
           make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
+          
+          # 用内核自带的 scripts/config 强行覆盖，防止它自己删掉
+          ./scripts/config --file out/.config --enable 64BIT
+          ./scripts/config --file out/.config --enable ARM64
+          ./scripts/config --file out/.config --enable KSU
+          
+          # 重新生成头文件
           make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
+          
           echo "=== 检查 CONFIG_64BIT 是否生效 ==="
           grep "CONFIG_64BIT" out/.config
 
