@@ -16,7 +16,6 @@ jobs:
 
       - name: Download Clang r383902b1 (LineageOS Mirror)
         run: |
-          # 用 LineageOS 官方仓库，走 git 协议，绝对稳定
           git clone --depth 1 -b android-11.0.0_r48 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86.git clang-repo
           mv clang-repo/clang-r383902b1 ./clang
           rm -rf clang-repo
@@ -49,19 +48,13 @@ jobs:
         run: |
           mkdir -p out
           cp config.txt out/.config
-          
-          # 暴力删掉冲突选项
           sed -i '/CONFIG_64BIT/d' out/.config
           sed -i '/CONFIG_ARM64/d' out/.config
-          
-          # 强行写入关键配置
           echo 'CONFIG_64BIT=y' >> out/.config
           echo 'CONFIG_ARM64=y' >> out/.config
           echo 'CONFIG_KSU=y' >> out/.config
-          
           make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
           make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
-          
           echo "=== 检查 CONFIG_64BIT 是否生效 ==="
           grep "CONFIG_64BIT" out/.config
 
