@@ -14,12 +14,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flex bison bc libssl-dev libelf-dev
 
-      - name: Download clang-11.0.2 (LLVM Official)
+      - name: Download Clang r383902b1 (LineageOS Mirror)
         run: |
-          wget -q "https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.2/clang+llvm-11.0.2-x86_64-linux-gnu-ubuntu-20.04.tar.xz" -O clang.tar.xz
-          tar -xf clang.tar.xz
-          mv clang+llvm-11.0.2-x86_64-linux-gnu-ubuntu-20.04 clang
-          rm clang.tar.xz
+          # 用 LineageOS 官方仓库，走 git 协议，绝对稳定
+          git clone --depth 1 -b android-11.0.0_r48 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86.git clang-repo
+          mv clang-repo/clang-r383902b1 ./clang
+          rm -rf clang-repo
           echo "$PWD/clang/bin" >> "$GITHUB_PATH"
 
       - name: Auto-fix missing Kconfigs
@@ -50,12 +50,11 @@ jobs:
           mkdir -p out
           cp config.txt out/.config
           
-          # 暴力删掉可能引起冲突的选项，防止被内核自动覆盖
+          # 暴力删掉冲突选项
           sed -i '/CONFIG_64BIT/d' out/.config
           sed -i '/CONFIG_ARM64/d' out/.config
-          sed -i '/CONFIG_ARM=/d' out/.config
           
-          # 强行写入关键核心配置
+          # 强行写入关键配置
           echo 'CONFIG_64BIT=y' >> out/.config
           echo 'CONFIG_ARM64=y' >> out/.config
           echo 'CONFIG_KSU=y' >> out/.config
@@ -63,9 +62,8 @@ jobs:
           make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
           make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
           
-          echo "================ 检查 CONFIG_64BIT ================"
+          echo "=== 检查 CONFIG_64BIT 是否生效 ==="
           grep "CONFIG_64BIT" out/.config
-          echo "==================================================="
 
       - name: Extract and Copy Module.symvers
         run: |
