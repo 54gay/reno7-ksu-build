@@ -65,9 +65,10 @@ jobs:
           make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
           make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
 
-      - name: Copy Module.symvers
-        run: cp Module.symvers out/Module.symvers
-
+      - name: Extract and Copy Module.symvers
+        run: |
+          gzip -d -c Module.symvers.gz > Module.symvers
+          cp Module.symvers out/Module.symvers
       - name: Build kernelsu.ko
         run: make -j"$(nproc)" ARCH=arm64 LLVM=1 O=out drivers/kernelsu/ </dev/null
 
