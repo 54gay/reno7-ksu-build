@@ -60,6 +60,8 @@ jobs:
         run: |
           mkdir -p out
           cp config.txt out/.config
+          echo 'CONFIG_64BIT=y' >> out/.config
+          echo 'CONFIG_ARM64=y' >> out/.config
           echo 'CONFIG_KSU=y' >> out/.config
           make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
           make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
