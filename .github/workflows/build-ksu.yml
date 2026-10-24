@@ -14,14 +14,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flex bison bc libssl-dev libelf-dev
 
-      - name: Download clang-r383902b1
-        run: |
-          # 从 GitHub 镜像拉取，绕开 Google 源
-          git clone --depth 1 --branch eleven https://github.com/TrellixVulnTeam/platform_prebuilts_clang_host_linux-x86_5FOJ.git clang-repo
-          mv clang-repo/clang-r383902b1 ./clang
-          rm -rf clang-repo
-          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
 
+      - name: Download clang-r383902b1 (Release Direct)
+        run: |
+          wget -q "https://github.com/Zycromerz/Clang/releases/download/11.0.2-release/Clang-11.0.2.tar.gz" -O clang.tar.gz
+          mkdir -p clang
+          tar -xzf clang.tar.gz -C clang
+          if [ -d "clang/bin" ]; then
+            echo "$PWD/clang/bin" >> "$GITHUB_PATH"
+          else
+            echo "$PWD/clang/Clang-11.0.2/bin" >> "$GITHUB_PATH"
+          fi
       - name: Prepare config
         run: |
           mkdir -p out
