@@ -35,7 +35,6 @@ jobs:
 
       - name: Auto-fix missing Kconfigs
         run: |
-          # 用 Python 一键扫描并注释掉所有缺失的 source，彻底解决 OPPO 阉割问题
           python3 -c '
           import os, re
           for root, dirs, files in os.walk("."):
@@ -69,8 +68,11 @@ jobs:
         run: |
           gzip -d -c Module.symvers.gz > Module.symvers
           cp Module.symvers out/Module.symvers
+
       - name: Build kernelsu.ko
-        run: make -j"$(nproc)" ARCH=arm64 LLVM=1 O=out drivers/kernelsu/ </dev/null
+        run: |
+          # 关掉庞大的调试信息，强制限制双核并发，防止内存爆炸
+          make -j2 ARCH=arm64 LLVM=1 O=out CONFIG_DEBUG_INFO=n CONFIG_DEBUG_INFO_REDUCED=y drivers/kernelsu/ </dev/null
 
       - uses: actions/upload-artifact@v4
         with:
