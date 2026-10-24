@@ -7,16 +7,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+
+      - name: Checkout Clang (Trellix Mirror)
+        uses: actions/checkout@v4
+        with:
+          repository: TrellixVulnTeam/platform_prebuilts_clang_host_linux-x86_5FOJ
+          ref: eleven
+          path: clang-repo
 
       - name: Install deps
         run: |
           sudo apt-get update
           sudo apt-get install -y flex bison bc libssl-dev libelf-dev
 
-      - name: Download Clang r383902b1 (LineageOS Mirror)
+      - name: Setup Clang
         run: |
-          git clone --depth 1 -b android-11.0.0_r48 https://github.com/LineageOS/android_prebuilts_clang_host_linux-x86.git clang-repo
           mv clang-repo/clang-r383902b1 ./clang
           rm -rf clang-repo
           echo "$PWD/clang/bin" >> "$GITHUB_PATH"
