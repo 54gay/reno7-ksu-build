@@ -14,24 +14,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flex bison bc libssl-dev libelf-dev
 
-      - name: Cache Clang Toolchain
-        id: cache-clang
-        uses: actions/cache@v4
-        with:
-          path: clang
-          key: clang-r383902b1-v2
-
-      - name: Download clang-r383902b1
-        if: steps.cache-clang.outputs.cache-hit != 'true'
+      - name: Download clang-11.0.2 (LLVM Official)
         run: |
-          curl -L -o clang-repo.tar.gz "https://github.com/TrellixVulnTeam/platform_prebuilts_clang_host_linux-x86_5FOJ/archive/refs/heads/eleven.tar.gz"
-          mkdir -p clang-repo
-          tar -xzf clang-repo.tar.gz -C clang-repo --strip-components=1
-          mv clang-repo/clang-r383902b1 ./clang
-          rm -rf clang-repo clang-repo.tar.gz
-
-      - name: Add Clang to PATH
-        run: echo "$PWD/clang/bin" >> "$GITHUB_PATH"
+          wget -q "https://github.com/llvm/llvm-project/releases/download/llvmorg-11.0.2/clang+llvm-11.0.2-x86_64-linux-gnu-ubuntu-20.04.tar.xz" -O clang.tar.xz
+          tar -xf clang.tar.xz
+          mv clang+llvm-11.0.2-x86_64-linux-gnu-ubuntu-20.04 clang
+          rm clang.tar.xz
+          echo "$PWD/clang/bin" >> "$GITHUB_PATH"
 
       - name: Auto-fix missing Kconfigs
         run: |
@@ -56,15 +45,27 @@ jobs:
           print("Kconfig auto-fix completed.")
           '
 
-      - name: Prepare config
+      - name: Prepare config (Force 64BIT)
         run: |
           mkdir -p out
           cp config.txt out/.config
+          
+          # 暴力删掉可能引起冲突的选项，防止被内核自动覆盖
+          sed -i '/CONFIG_64BIT/d' out/.config
+          sed -i '/CONFIG_ARM64/d' out/.config
+          sed -i '/CONFIG_ARM=/d' out/.config
+          
+          # 强行写入关键核心配置
           echo 'CONFIG_64BIT=y' >> out/.config
           echo 'CONFIG_ARM64=y' >> out/.config
           echo 'CONFIG_KSU=y' >> out/.config
+          
           make ARCH=arm64 LLVM=1 O=out olddefconfig </dev/null
           make ARCH=arm64 LLVM=1 O=out syncconfig </dev/null
+          
+          echo "================ 检查 CONFIG_64BIT ================"
+          grep "CONFIG_64BIT" out/.config
+          echo "==================================================="
 
       - name: Extract and Copy Module.symvers
         run: |
@@ -73,8 +74,7 @@ jobs:
 
       - name: Build kernelsu.ko
         run: |
-          # 关掉庞大的调试信息，强制限制双核并发，防止内存爆炸
-          make -j2 ARCH=arm64 LLVM=1 O=out CONFIG_DEBUG_INFO=n CONFIG_DEBUG_INFO_REDUCED=y drivers/kernelsu/ </dev/null
+          make -j2 ARCH=arm64 LLVM=1 O=out CONFIG_DEBUG_INFO=n drivers/kernelsu/ </dev/null
 
       - uses: actions/upload-artifact@v4
         with:
